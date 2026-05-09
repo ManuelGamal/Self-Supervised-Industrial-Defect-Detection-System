@@ -52,7 +52,14 @@ Thumbs.db
 *:Zone.Identifier
 tmp_*
 *.ckpt
-*.onnx
 *.png
 *.exe
 .coverage
+test_image.jpg
+
+# Keep ONNX models (needed for deployment)
+!models_onnx/*.onnx
+models_onnx/*.onnx.data
+
+# Large data
+archive (2)/
