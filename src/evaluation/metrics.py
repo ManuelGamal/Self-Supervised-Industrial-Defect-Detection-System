@@ -15,21 +15,57 @@ from sklearn.metrics import (
 )
 
 
-def _validate_inputs(y_true: np.ndarray, y_score: np.ndarray) -> None:
-    if len(y_true) == 0 or len(y_score) == 0:
-        raise ValueError("Cannot compute metric on empty arrays.")
-    if len(np.unique(y_true)) < 2:
-        raise ValueError("Cannot compute metric on all-same-class inputs.")
+def _validate_inputs(
+    y_true: np.ndarray,
+    y_score: np.ndarray,
+    *,
+    allow_single_class: bool = False,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Validate metric inputs and return flattened numpy arrays.
+
+    Args:
+        y_true: Ground-truth binary labels.
+        y_score: Predicted scores or predicted labels.
+        allow_single_class: If True, skip the single-class check.
+            This is useful for metrics like accuracy and fixed-threshold F1.
+
+    Raises:
+        ValueError: If arrays are empty, shapes mismatch, or y_true has only
+            one class when allow_single_class is False.
+    """
+    y_true = np.asarray(y_true).ravel()
+    y_score = np.asarray(y_score).ravel()
+
+    if y_true.size == 0:
+        raise ValueError("y_true is empty; cannot compute metric.")
+    if y_score.size == 0:
+        raise ValueError("y_score is empty; cannot compute metric.")
+    if y_true.shape != y_score.shape:
+        raise ValueError(
+            f"Shape mismatch: y_true has shape {y_true.shape}, "
+            f"but y_score has shape {y_score.shape}."
+        )
+
+    unique_classes = np.unique(y_true)
+    if not allow_single_class and unique_classes.size < 2:
+        raise ValueError(
+            f"y_true contains only one class ({unique_classes[0]}); "
+            "AUROC, AUPR, and optimal-threshold F1 are undefined on "
+            "single-class data."
+        )
+
+    return y_true, y_score
+
 
 def compute_auroc(y_true: np.ndarray, y_score: np.ndarray) -> float:
     """Area Under ROC Curve."""
-    _validate_inputs(y_true, y_score)
+    y_true, y_score = _validate_inputs(y_true, y_score)
     return float(roc_auc_score(y_true, y_score))
 
 
 def compute_aupr(y_true: np.ndarray, y_score: np.ndarray) -> float:
     """Area Under Precision-Recall Curve (a.k.a. Average Precision)."""
-    _validate_inputs(y_true, y_score)
+    y_true, y_score = _validate_inputs(y_true, y_score)
     return float(average_precision_score(y_true, y_score))
 
 
@@ -39,10 +75,15 @@ compute_map = compute_aupr
 
 def compute_f1(y_true: np.ndarray, y_pred: np.ndarray, threshold: float = 0.5) -> float:
     """F1 Score at a given threshold."""
-    if len(y_true) == 0 or len(y_pred) == 0:
-        raise ValueError("Cannot compute metric on empty arrays.")
-    if y_pred.dtype == float:
+    y_true, y_pred = _validate_inputs(
+        y_true,
+        y_pred,
+        allow_single_class=True,
+    )
+
+    if np.issubdtype(y_pred.dtype, np.floating):
         y_pred = (y_pred >= threshold).astype(int)
+
     return float(f1_score(y_true, y_pred, zero_division=0))
 
 
@@ -54,15 +95,20 @@ def compute_f1_optimal(
     Uses the precision/recall pairs from sklearn's precision_recall_curve,
     computes F1 at each, and picks the maximum.
     """
-    _validate_inputs(y_true, y_score)
+    y_true, y_score = _validate_inputs(y_true, y_score)
+
     precision, recall, thresholds = precision_recall_curve(y_true, y_score)
+
     # F1 = 2*P*R / (P + R); add epsilon to avoid divide-by-zero
     f1_scores = 2 * precision * recall / (precision + recall + 1e-12)
+
     # precision_recall_curve returns one extra precision/recall point with
     # no matching threshold, so drop the last F1 entry to align indices.
     f1_scores = f1_scores[:-1]
+
     if len(f1_scores) == 0:
         return 0.0, 0.5
+
     best_idx = int(np.argmax(f1_scores))
     return float(f1_scores[best_idx]), float(thresholds[best_idx])
 
@@ -71,8 +117,12 @@ def compute_accuracy(
     y_true: np.ndarray, y_score: np.ndarray, threshold: float = 0.5
 ) -> float:
     """Accuracy at a given threshold."""
-    if len(y_true) == 0 or len(y_score) == 0:
-        raise ValueError("Cannot compute metric on empty arrays.")
+    y_true, y_score = _validate_inputs(
+        y_true,
+        y_score,
+        allow_single_class=True,
+    )
+
     y_pred = (y_score >= threshold).astype(int)
     return float(accuracy_score(y_true, y_pred))
 
@@ -87,9 +137,11 @@ def compute_pixel_iou(pred_mask: np.ndarray, gt_mask: np.ndarray) -> float:
     """
     intersection = np.logical_and(pred_mask, gt_mask).sum()
     union = np.logical_or(pred_mask, gt_mask).sum()
+
     if union == 0:
         return 1.0
-    return intersection / union
+
+    return float(intersection / union)
 
 
 def evaluate_detector(
@@ -115,14 +167,16 @@ def evaluate_detector(
     else:
         f1_value = compute_f1(y_true, y_score, threshold=threshold)
 
+    aupr = compute_aupr(y_true, y_score)
+
     results: Dict[str, float] = {
         "auroc": compute_auroc(y_true, y_score),
-        "aupr": compute_aupr(y_true, y_score),
+        "aupr": aupr,
         "f1": f1_value,
         "accuracy": compute_accuracy(y_true, y_score, threshold=threshold),
         "threshold": float(threshold),
         # Backward-compat: older callers expected "map"
-        "map": compute_aupr(y_true, y_score),
+        "map": aupr,
     }
 
     if pred_masks is not None and gt_masks is not None:
@@ -136,9 +190,11 @@ def evaluate_detector(
 
 def print_results(results: Dict[str, float], title: str = "Evaluation Results"):
     """Pretty print evaluation results."""
-    print(f"\n{'='*40}")
+    print(f"\n{'=' * 40}")
     print(f"  {title}")
-    print(f"{'='*40}")
+    print(f"{'=' * 40}")
+
     for metric, value in results.items():
         print(f"  {metric.upper():<15} {value:.4f}")
-    print(f"{'='*40}\n")
+
+    print(f"{'=' * 40}\n")
