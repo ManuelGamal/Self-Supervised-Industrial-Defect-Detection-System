@@ -1,0 +1,92 @@
+{
+  "_metadata": {
+    "source_parquet": "C:/Users/acer/Downloads/results (1).parquet",
+    "selection_metric_used": "val_auroc",
+    "tie_break_metric_used": "val_f1",
+    "note": "Detailed run breakdown includes validation metrics and run URLs."
+  },
+  "bottle": {
+    "selected_fold": 3,
+    "selection_metric": "val_auroc",
+    "tie_break_metric": "val_f1",
+    "run_id": "hdq1ykmm",
+    "run_name": "supervised-defect-bottle-r100-fold3",
+    "run_url": "https://wandb.ai/manuelaziz27-ain-shams-university/defect-detection-supervised/runs/hdq1ykmm",
+    "val_auroc": 0.9939236044883728,
+    "val_f1": 0.8387096524238586,
+    "test_auroc": 0.9746031761169434,
+    "test_f1": 0.6153846383094788,
+    "checkpoint_filename": "bottle_r100_f3_best.ckpt",
+    "checkpoint_path_hint": "Kaggle Dataset checkpoint package / bottle_r100_f3_best.ckpt"
+  },
+  "capsule": {
+    "selected_fold": 1,
+    "selection_metric": "val_auroc",
+    "tie_break_metric": "val_f1",
+    "run_id": "rqt6d21y",
+    "run_name": "supervised-defect-capsule-r100-fold1",
+    "run_url": "https://wandb.ai/manuelaziz27-ain-shams-university/defect-detection-supervised/runs/rqt6d21y",
+    "val_auroc": 0.9551191926002502,
+    "val_f1": 0.7450980544090271,
+    "test_auroc": 0.8800675868988037,
+    "test_f1": 0.692307710647583,
+    "checkpoint_filename": "capsule_r100_f1_best.ckpt",
+    "checkpoint_path_hint": "Kaggle Dataset checkpoint package / capsule_r100_f1_best.ckpt"
+  },
+  "carpet": {
+    "selected_fold": 1,
+    "selection_metric": "val_auroc",
+    "tie_break_metric": "val_f1",
+    "run_id": "im49iujp",
+    "run_name": "supervised-defect-carpet-r100-fold1",
+    "run_url": "https://wandb.ai/manuelaziz27-ain-shams-university/defect-detection-supervised/runs/im49iujp",
+    "val_auroc": 0.96640145778656,
+    "val_f1": 0.800000011920929,
+    "test_auroc": 0.9558101892471312,
+    "test_f1": 0.774193525314331,
+    "checkpoint_filename": "carpet_r100_f1_best.ckpt",
+    "checkpoint_path_hint": "Kaggle Dataset checkpoint package / carpet_r100_f1_best.ckpt"
+  },
+  "hazelnut": {
+    "selected_fold": 1,
+    "selection_metric": "val_auroc",
+    "tie_break_metric": "val_f1",
+    "run_id": "la0gi1ym",
+    "run_name": "supervised-defect-hazelnut-r100-fold1",
+    "run_url": "https://wandb.ai/manuelaziz27-ain-shams-university/defect-detection-supervised/runs/la0gi1ym",
+    "val_auroc": 0.9950819611549376,
+    "val_f1": 0.75,
+    "test_auroc": 0.9860140085220336,
+    "test_f1": 0.7777777910232544,
+    "checkpoint_filename": "hazelnut_r100_f1_best.ckpt",
+    "checkpoint_path_hint": "Kaggle Dataset checkpoint package / hazelnut_r100_f1_best.ckpt"
+  },
+  "leather": {
+    "selected_fold": 3,
+    "selection_metric": "val_auroc",
+    "tie_break_metric": "val_f1",
+    "run_id": "605iippn",
+    "run_name": "supervised-defect-leather-r100-fold3",
+    "run_url": "https://wandb.ai/manuelaziz27-ain-shams-university/defect-detection-supervised/runs/605iippn",
+    "val_auroc": 1.0,
+    "val_f1": 1.0,
+    "test_auroc": 0.9965986013412476,
+    "test_f1": 0.9285714030265808,
+    "checkpoint_filename": "leather_r100_f3_best.ckpt",
+    "checkpoint_path_hint": "Kaggle Dataset checkpoint package / leather_r100_f3_best.ckpt"
+  },
+  "pill": {
+    "selected_fold": 3,
+    "selection_metric": "val_auroc",
+    "tie_break_metric": "val_f1",
+    "run_id": "zqdxt95n",
+    "run_name": "supervised-defect-pill-r100-fold3",
+    "run_url": "https://wandb.ai/manuelaziz27-ain-shams-university/defect-detection-supervised/runs/zqdxt95n",
+    "val_auroc": 0.9153536558151244,
+    "val_f1": 0.7647058963775635,
+    "test_auroc": 0.94111567735672,
+    "test_f1": 0.782608687877655,
+    "checkpoint_filename": "pill_r100_f3_best.ckpt",
+    "checkpoint_path_hint": "Kaggle Dataset checkpoint package / pill_r100_f3_best.ckpt"
+  }
+}
