@@ -5,17 +5,9 @@
 
 ## 1. Project Context
 
-This project evaluates a supervised industrial defect detection system on six categories from the MVTec AD dataset: **bottle, capsule, carpet, hazelnut, leather, and pill**. The goal is to classify each industrial product image as either **normal** or **defective**, then provide both quantitative and qualitative evidence of model performance.
+This project evaluates an industrial defect detection system using images from the MVTec AD dataset. The main goal is simple: given an image of an industrial product, the model should decide whether the product is **normal** or **defective**.
 
-Although the original repository title mentions self-supervised industrial defect detection, the completed experimental scope for this stage is a **supervised ResNet-50 binary classification baseline**. The model is trained and evaluated using 100% of the available labeled data for the selected six categories, with three cross-validation folds per category.
-
-Engineer 5 is responsible for the evaluation infrastructure. This includes metric computation, bootstrap confidence intervals, checkpoint evaluation, qualitative Grad-CAM galleries, failure-case analysis, the final evaluation notebook, and this report.
-
----
-
-## 2. Evaluation Scope
-
-The evaluation covers six MVTec AD categories:
+The evaluation focuses on six MVTec AD categories:
 
 - bottle
 - capsule
@@ -24,59 +16,83 @@ The evaluation covers six MVTec AD categories:
 - leather
 - pill
 
-The evaluation uses the best selected checkpoint per category based on Engineer 4's best-fold analysis. The task is image-level binary classification:
+Although the repository title mentions self-supervised industrial defect detection, the completed experimental scope for this stage is a **supervised ResNet-50 binary classification baseline**. This means the trained models use labeled examples of normal and defective images.
 
-- class 0: normal
-- class 1: defective
+Engineer 5 is responsible for the evaluation side of the project. This includes computing metrics, adding confidence intervals, evaluating trained checkpoints, generating diagnostic plots, supporting qualitative analysis, writing the evaluation notebook, and preparing the final report.
+
+---
+
+## 2. Evaluation Scope
+
+The updated final evaluation tests all trained fold checkpoints, not just one selected checkpoint per category.
+
+The evaluation covers:
+
+- 6 categories
+- 3 folds per category
+- 18 total checkpoint evaluations
+
+In other words:
+
+6 categories × 3 folds = 18 checkpoint evaluations
+
+The classification task is binary:
+
+- class 0 = normal
+- class 1 = defective
 
 The evaluation metrics are:
 
 - AUROC
 - AUPR
-- F1 score at the optimal threshold
+- F1 score
 - Accuracy
-- 95% bootstrap confidence intervals
+- 95% bootstrap confidence intervals saved in the per-fold metric outputs
 
-The qualitative outputs are:
+The diagnostic and qualitative outputs include:
 
 - ROC curves
 - Precision-Recall curves
 - Confusion matrices
-- Grad-CAM galleries
-- Failure-case galleries
+- Optional Grad-CAM galleries
+- Optional failure-case galleries
 
-The final evaluation notebook used for this report is:
+The final notebook used for this evaluation is:
 
 `notebooks/04_Evaluation.ipynb`
 
-The notebook runs the complete evaluation pipeline end-to-end on Kaggle using the trained checkpoints and the real MVTec test dataloaders.
+The notebook was run on Kaggle using:
+
+- `manuelgamal/mvtec-subset` for image data
+- `ssidds-checkpoints` for the trained model checkpoints
+- the GitHub repository for evaluation code and split CSVs
 
 ---
 
-## 3. Methodology
+## 3. Model and Training Background
 
 ### 3.1 Model Architecture
 
 The evaluated model is a supervised binary classifier based on a ResNet-50 backbone.
 
-The model pipeline is:
+The pipeline is:
 
 Input image → ResNet-50 encoder → Global Average Pooling → Dropout → Linear classification head
 
-The ResNet-50 backbone is loaded using `timm`, and the final classification head outputs two logits:
+The model outputs two logits:
 
 - logit 0: normal
 - logit 1: defective
 
-During evaluation, the defect probability is computed using softmax over the output logits:
+During evaluation, the defect probability is computed using softmax:
 
 defect probability = softmax(logits)[class 1]
 
-This defect probability is then used to compute AUROC, AUPR, F1, and accuracy.
+This probability score is then used to compute AUROC, AUPR, F1, and accuracy.
 
 ---
 
-### 3.2 Training Context
+### 3.2 Training Setup
 
 The models were trained using:
 
@@ -85,36 +101,50 @@ The models were trained using:
 - focal loss
 - AdamW optimizer
 - cosine learning-rate schedule
-- PyTorch Lightning training loop
+- PyTorch Lightning
 
-Focal loss was used because industrial defect datasets often contain class imbalance between normal and defective samples. This helps reduce the dominance of easy majority-class examples during training.
+Engineer 3 completed the full supervised training pipeline and executed all 18 training runs.
 
-Training was completed by Engineer 3 using:
+The locked training scope was:
 
-6 categories × 3 folds = 18 supervised training runs
+100% labels only × 3 folds × 6 categories
 
-Engineer 4 then selected the best-performing fold checkpoint for each category. Engineer 5 used these selected checkpoints for the final evaluation.
-
----
-
-### 3.3 Data Protocol
-
-The project uses MVTec AD data prepared into train, validation, and test splits. For each category, three cross-validation folds were trained and evaluated.
-
-The final evaluation uses the best fold checkpoint per category selected from Engineer 4's fold analysis.
-
-The final evaluation therefore represents:
-
-- 100% labeled supervised evaluation
-- best selected fold per category
-- real test-set predictions
-- sample-level bootstrap confidence intervals
-
-This is important because the reported results are not based on random or mocked predictions. They are generated using real checkpoints and real dataloaders.
+The original plan included label-ratio experiments at 10%, 50%, and 100%, but the final project scope changed. Instead of testing different label fractions, the project focused on 3-fold cross-validation for stability analysis.
 
 ---
 
-## 4. Evaluation Implementation
+## 4. Threshold Protocol
+
+A very important update in this evaluation is the threshold protocol.
+
+The previous evaluation used thresholds chosen from the evaluation predictions. That can make F1 and accuracy look slightly optimistic because the threshold is optimized on the same data being reported.
+
+The updated notebook uses **Engineer 3 fixed category thresholds** instead. These thresholds were selected using F1-optimal search on the validation set during training.
+
+| Category | Engineer 3 Threshold |
+|---|---:|
+| bottle | 0.3924 |
+| capsule | 0.4337 |
+| carpet | 0.4542 |
+| hazelnut | 0.3982 |
+| leather | 0.4731 |
+| pill | 0.4564 |
+
+The same threshold is used for all three folds of the same category.
+
+For example:
+
+- bottle fold 1 uses threshold 0.3924
+- bottle fold 2 uses threshold 0.3924
+- bottle fold 3 uses threshold 0.3924
+
+This is because Engineer 3 reported one category-level threshold, not a separate threshold for every fold.
+
+This makes the updated evaluation more realistic because it does not tune the threshold on the test predictions.
+
+---
+
+## 5. Evaluation Implementation
 
 The evaluation code is organized under:
 
@@ -129,9 +159,9 @@ The main files are:
 
 ---
 
-### 4.1 Metrics
+### 5.1 Metrics
 
-The following functions are implemented in `src/evaluation/metrics.py`:
+The file `src/evaluation/metrics.py` implements:
 
 - `compute_auroc`
 - `compute_aupr`
@@ -141,306 +171,314 @@ The following functions are implemented in `src/evaluation/metrics.py`:
 - `compute_pixel_iou`
 - `evaluate_detector`
 
-The metrics module was updated to include strict input validation. The validation checks for:
+The metrics file also includes strict input validation. It checks for:
 
-- empty `y_true`
-- empty `y_score`
+- empty arrays
 - shape mismatch between labels and scores
-- single-class input for metrics where single-class data is undefined
+- single-class labels when the metric requires both classes
 
-This is important because AUROC, AUPR, and optimal-threshold F1 are not reliable when the ground-truth labels contain only one class. Instead of silently producing misleading values, the functions now raise clear `ValueError` messages.
+This prevents silent evaluation mistakes and gives clearer errors when the input is invalid.
 
 ---
 
-### 4.2 Bootstrap Confidence Intervals
+### 5.2 Bootstrap Confidence Intervals
 
-Bootstrap confidence intervals are implemented in:
+The file `src/evaluation/bootstrap.py` implements bootstrap confidence intervals.
 
-`src/evaluation/bootstrap.py`
-
-The final evaluation uses:
+The evaluation uses:
 
 - 10,000 bootstrap resamples
 - 95% confidence intervals
-- random seed = 42
+- seed = 42
 
-Bootstrap confidence intervals are used to estimate uncertainty around each metric. This is especially important because some categories have relatively small test sets, so a single metric value can be misleading without an uncertainty range.
+Bootstrap confidence intervals are important because some test sets are small. A single metric value can look strong or weak by chance, so confidence intervals help show how stable the estimate is.
+
+The per-fold `metrics.json` files store the detailed metric outputs, including confidence interval values.
 
 ---
 
-### 4.3 Checkpoint Evaluation
+### 5.3 Checkpoint Evaluation
 
-Checkpoint evaluation is implemented in:
+For each category and fold, the notebook:
 
-`src/evaluation/evaluator.py`
+1. Loads the fold checkpoint.
+2. Builds the test dataloader.
+3. Runs inference.
+4. Gets the defect probability.
+5. Applies the fixed Engineer 3 threshold.
+6. Computes AUROC, AUPR, F1, and accuracy.
+7. Computes bootstrap confidence intervals.
+8. Saves outputs for that category/fold.
 
-The evaluator performs the following steps:
-
-1. Load the selected model checkpoint.
-2. Run inference on the test dataloader.
-3. Extract defect probabilities using softmax.
-4. Compute AUROC, AUPR, F1, accuracy, and threshold.
-5. Compute 95% bootstrap confidence intervals.
-6. Save diagnostic plots.
-7. Save a `metrics.json` file for each evaluated category.
-
-For each category, the evaluator saves:
+For every category/fold, the notebook saves:
 
 - `metrics.json`
+- `predictions.csv`
 - `roc_curve.png`
 - `pr_curve.png`
 - `confusion_matrix.png`
 
+The output directory is:
+
+`/kaggle/working/eval_results_all_folds/`
+
 ---
 
-### 4.4 Qualitative Evaluation
+### 5.4 Qualitative Evaluation
 
-Qualitative analysis is implemented in:
-
-`src/evaluation/qualitative.py`
-
-It produces:
+The file `src/evaluation/qualitative.py` supports:
 
 - Grad-CAM galleries
 - failure-case galleries
 
-The Grad-CAM galleries help inspect whether the model is focusing on meaningful product regions when making predictions.
+In the updated all-fold notebook, qualitative generation is optional and disabled by default:
 
-The failure-case galleries show the most problematic examples, such as false positives, false negatives, or highly uncertain samples. These outputs help explain why some categories perform worse than others.
+`RUN_QUALITATIVE = False`
 
----
+This keeps the all-fold quantitative evaluation faster and more stable. Grad-CAM and failure-case galleries can still be generated by setting:
 
-## 5. Final Quantitative Results
-
-The following results are from the final Kaggle evaluation run using the best selected checkpoint for each category.
-
-| Category | Fold | Threshold | AUROC (95% CI) | AUPR (95% CI) | F1 (95% CI) | Accuracy (95% CI) |
-|---|---:|---:|---|---|---|---|
-| bottle | 3 | 0.3255 | 0.9746 [0.9235, 1.0000] | 0.9094 [0.7120, 1.0000] | 0.8571 [0.6667, 1.0000] | 0.9318 [0.8409, 1.0000] |
-| capsule | 1 | 0.4617 | 0.8834 [0.7745, 0.9615] | 0.8093 [0.6200, 0.9384] | 0.7407 [0.5000, 0.9000] | 0.8679 [0.7736, 0.9434] |
-| carpet | 1 | 0.3225 | 0.9574 [0.9021, 0.9926] | 0.8726 [0.6984, 0.9759] | 0.8125 [0.6316, 0.9412] | 0.9000 [0.8167, 0.9667] |
-| hazelnut | 1 | 0.2554 | 0.9846 [0.9531, 1.0000] | 0.9330 [0.7925, 1.0000] | 0.8696 [0.6667, 1.0000] | 0.9605 [0.9079, 1.0000] |
-| leather | 3 | 0.5226 | 0.9966 [0.9837, 1.0000] | 0.9911 [0.9556, 1.0000] | 0.9630 [0.8571, 1.0000] | 0.9821 [0.9464, 1.0000] |
-| pill | 3 | 0.4983 | 0.9360 [0.8669, 0.9837] | 0.9048 [0.7979, 0.9739] | 0.8085 [0.6667, 0.9167] | 0.8636 [0.7727, 0.9394] |
-| **Overall Mean** | — | — | **0.9554** | **0.9034** | **0.8419** | **0.9177** |
-
-Total evaluated test samples across the six categories:
-
-**355 samples**
+`RUN_QUALITATIVE = True`
 
 ---
 
-## 6. Per-Category Discussion
+## 6. Final Quantitative Results
 
-### 6.1 Leather
+The updated evaluation successfully evaluated all 18 fold checkpoints.
 
-Leather is the strongest category in the final evaluation.
+Successful folds: 18 / 18  
+Errors: 0
+
+This means every category and every fold was evaluated successfully.
+
+---
+
+### 6.1 Per-Fold Results
+
+| Category | Fold | Checkpoint Folder | Threshold | AUROC | AUPR | F1 | Accuracy | Samples | Positive | Negative |
+|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| bottle | 1 | fold_0 | 0.3924 | 0.9841 | 0.9603 | 0.8750 | 0.9545 | 44 | 9 | 35 |
+| bottle | 2 | fold_1 | 0.3924 | 0.9270 | 0.8397 | 0.8000 | 0.9318 | 44 | 9 | 35 |
+| bottle | 3 | fold_2 | 0.3924 | 0.9746 | 0.9094 | 0.7500 | 0.9091 | 44 | 9 | 35 |
+| capsule | 1 | fold_0 | 0.4337 | 0.8834 | 0.8093 | 0.6452 | 0.7925 | 53 | 16 | 37 |
+| capsule | 2 | fold_1 | 0.4337 | 0.9375 | 0.9037 | 0.8000 | 0.8868 | 53 | 16 | 37 |
+| capsule | 3 | fold_2 | 0.4337 | 0.9409 | 0.9321 | 0.8485 | 0.9057 | 53 | 16 | 37 |
+| carpet | 1 | fold_0 | 0.4542 | 0.9574 | 0.8726 | 0.7742 | 0.8833 | 60 | 13 | 47 |
+| carpet | 2 | fold_1 | 0.4542 | 0.9345 | 0.6666 | 0.7333 | 0.8667 | 60 | 13 | 47 |
+| carpet | 3 | fold_2 | 0.4542 | 0.8854 | 0.7364 | 0.6429 | 0.8333 | 60 | 13 | 47 |
+| hazelnut | 1 | fold_0 | 0.3982 | 0.9846 | 0.9330 | 0.8000 | 0.9474 | 76 | 11 | 65 |
+| hazelnut | 2 | fold_1 | 0.3982 | 0.9580 | 0.8948 | 0.9000 | 0.9737 | 76 | 11 | 65 |
+| hazelnut | 3 | fold_2 | 0.3982 | 0.9916 | 0.9633 | 0.8571 | 0.9605 | 76 | 11 | 65 |
+| leather | 1 | fold_0 | 0.4731 | 0.9949 | 0.9860 | 0.8889 | 0.9464 | 56 | 14 | 42 |
+| leather | 2 | fold_1 | 0.4731 | 1.0000 | 1.0000 | 0.9630 | 0.9821 | 56 | 14 | 42 |
+| leather | 3 | fold_2 | 0.4731 | 0.9966 | 0.9911 | 0.9286 | 0.9643 | 56 | 14 | 42 |
+| pill | 1 | fold_0 | 0.4564 | 0.8946 | 0.8760 | 0.7660 | 0.8333 | 66 | 22 | 44 |
+| pill | 2 | fold_1 | 0.4564 | 0.9029 | 0.8494 | 0.6977 | 0.8030 | 66 | 22 | 44 |
+| pill | 3 | fold_2 | 0.4564 | 0.9360 | 0.9048 | 0.7917 | 0.8485 | 66 | 22 | 44 |
+
+---
+
+### 6.2 Mean Results Across Folds
+
+| Category | Threshold | Mean AUROC | AUROC Std | Mean AUPR | AUPR Std | Mean F1 | F1 Std | Mean Accuracy | Accuracy Std |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| bottle | 0.3924 | 0.9619 | 0.0306 | 0.9031 | 0.0606 | 0.8083 | 0.0629 | 0.9318 | 0.0227 |
+| capsule | 0.4337 | 0.9206 | 0.0322 | 0.8817 | 0.0643 | 0.7645 | 0.1062 | 0.8616 | 0.0607 |
+| carpet | 0.4542 | 0.9258 | 0.0368 | 0.7585 | 0.1048 | 0.7168 | 0.0672 | 0.8611 | 0.0255 |
+| hazelnut | 0.3982 | 0.9781 | 0.0177 | 0.9304 | 0.0343 | 0.8524 | 0.0502 | 0.9605 | 0.0132 |
+| leather | 0.4731 | 0.9972 | 0.0026 | 0.9923 | 0.0071 | 0.9268 | 0.0371 | 0.9643 | 0.0179 |
+| pill | 0.4564 | 0.9112 | 0.0219 | 0.8767 | 0.0277 | 0.7518 | 0.0486 | 0.8283 | 0.0231 |
+| **Overall Mean** | **0.4347** | **0.9491** | **0.0350** | **0.8905** | **0.0772** | **0.8034** | **0.0766** | **0.9013** | **0.0582** |
+
+Total unique test samples across categories:
+
+355 samples
+
+The same category-level test split is used for all three fold checkpoints of a category, while the checkpoint changes across folds. This allows the three trained fold models to be compared directly on the same held-out test set.
+
+---
+
+## 7. Per-Category Discussion
+
+### 7.1 Leather
+
+Leather is the strongest category overall.
 
 It achieved:
 
-- AUROC = 0.9966
-- AUPR = 0.9911
-- F1 = 0.9630
-- Accuracy = 0.9821
+- Mean AUROC = 0.9972
+- Mean AUPR = 0.9923
+- Mean F1 = 0.9268
+- Mean Accuracy = 0.9643
 
-This indicates that the model separates normal and defective leather images very effectively. Leather defects are often visually distinct from the normal texture, allowing the ResNet-50 feature extractor to learn discriminative patterns.
+Leather also has the lowest AUROC standard deviation across folds:
 
-The AUROC confidence interval is also narrow, which suggests that the result is stable across bootstrap samples.
+Leather AUROC Std = 0.0026
+
+This means the model performs very consistently on leather. The defects are likely visually clear enough for the model to learn stable features across folds.
 
 ---
 
-### 6.2 Hazelnut
+### 7.2 Hazelnut
 
 Hazelnut also performs strongly.
 
 It achieved:
 
-- AUROC = 0.9846
-- AUPR = 0.9330
-- F1 = 0.8696
-- Accuracy = 0.9605
+- Mean AUROC = 0.9781
+- Mean AUPR = 0.9304
+- Mean F1 = 0.8524
+- Mean Accuracy = 0.9605
 
-The model is able to detect defective hazelnut samples with high confidence. However, the F1 confidence interval is still relatively wide, which suggests that the exact classification threshold and class distribution affect the final binary predictions.
+The model is reliable on hazelnut, although F1 varies slightly across folds. This means the ranking performance is very strong, while the final threshold-based decision still changes a bit from fold to fold.
 
 ---
 
-### 6.3 Bottle
+### 7.3 Bottle
 
 Bottle achieved:
 
-- AUROC = 0.9746
-- AUPR = 0.9094
-- F1 = 0.8571
-- Accuracy = 0.9318
+- Mean AUROC = 0.9619
+- Mean AUPR = 0.9031
+- Mean F1 = 0.8083
+- Mean Accuracy = 0.9318
 
-This is a strong result overall. However, the AUPR and F1 confidence intervals are wider than expected. This is likely due to the smaller number of test samples and the effect of threshold selection on the positive defect class.
-
-The model ranks defective bottle images well, but the final binary classification performance still depends on the selected threshold.
+Bottle has strong overall performance, but fold 2 is weaker than fold 1 and fold 3. This shows why it is useful to evaluate all folds instead of only reporting a single best model.
 
 ---
 
-### 6.4 Carpet
+### 7.4 Capsule
 
-Carpet achieved:
+Capsule achieved:
 
-- AUROC = 0.9574
-- AUPR = 0.8726
-- F1 = 0.8125
-- Accuracy = 0.9000
+- Mean AUROC = 0.9206
+- Mean AUPR = 0.8817
+- Mean F1 = 0.7645
+- Mean Accuracy = 0.8616
 
-The AUROC is high, meaning the model generally ranks defective images above normal images. However, the F1 score is lower than the strongest categories.
+Capsule has the highest F1 standard deviation:
 
-This suggests that choosing a single operating threshold is harder for carpet. Carpet textures contain repeated patterns and local variations that may visually resemble defects, making classification more challenging.
+Capsule F1 Std = 0.1062
 
----
-
-### 6.5 Pill
-
-Pill achieved:
-
-- AUROC = 0.9360
-- AUPR = 0.9048
-- F1 = 0.8085
-- Accuracy = 0.8636
-
-This is a reasonable result, but weaker than leather, hazelnut, and bottle. Pill defects can be subtle, including small cracks, color changes, or shape irregularities. These defects may not dominate the image, making them harder to detect using only image-level labels.
+This suggests that capsule classification is sensitive to the training fold. The defects may be subtle, small, or visually close to normal capsule variations.
 
 ---
 
-### 6.6 Capsule
+### 7.5 Carpet
 
-Capsule is the weakest category in the final test evaluation.
+Carpet is one of the hardest categories.
 
 It achieved:
 
-- AUROC = 0.8834
-- AUPR = 0.8093
-- F1 = 0.7407
-- Accuracy = 0.8679
+- Mean AUROC = 0.9258
+- Mean AUPR = 0.7585
+- Mean F1 = 0.7168
+- Mean Accuracy = 0.8611
 
-This suggests that capsule is the most difficult category among the six evaluated categories.
-
-Possible reasons include:
-
-- subtle visual differences between normal and defective capsules
-- reflections or lighting changes that resemble anomalies
-- small defect regions relative to the full image
-- possible validation/test distribution gap
-
-Engineer 3's earlier validation-level results suggested stronger capsule performance, but the final selected test result shows a lower AUROC. This indicates that validation performance may not fully represent test difficulty for this category.
+Carpet has the lowest mean F1 and lowest mean AUPR. This suggests that threshold-based classification is difficult for this category. Repeated texture patterns and subtle defects can make carpet images harder to classify correctly.
 
 ---
 
-## 7. Per-Fold Consistency Discussion
+### 7.6 Pill
 
-Engineer 4's fold analysis is important because it shows whether model performance is stable across different data splits.
+Pill has the lowest mean AUROC.
 
-The three-fold cross-validation setup is useful because a single split can hide instability. In this project, fold-level differences are especially important for categories with subtle defect patterns.
+It achieved:
 
-Categories such as leather, hazelnut, and bottle show strong performance and appear relatively stable. Their high AUROC values suggest that the model consistently learns useful defect-discriminative features.
+- Mean AUROC = 0.9112
+- Mean AUPR = 0.8767
+- Mean F1 = 0.7518
+- Mean Accuracy = 0.8283
 
-Categories such as capsule, carpet, and pill are more challenging. Capsule in particular shows weaker final test performance compared with its validation performance, which suggests either overfitting to validation data or a harder selected test fold.
-
-This justifies using three-fold cross-validation instead of a single random split. The additional compute cost provides better evidence about whether a model is genuinely robust or only performs well on a favorable split.
+Pill defects can include small cracks, discoloration, or shape irregularities. These defects may not dominate the full image, which makes image-level classification more challenging.
 
 ---
 
-## 8. Qualitative Analysis
+## 8. Fold Consistency Discussion
 
-The qualitative evaluation produces Grad-CAM galleries and failure-case galleries for each category.
+The all-fold evaluation gives a clearer picture than a best-checkpoint-only evaluation.
 
-The Grad-CAM galleries are intended to answer the question:
+Stable categories:
 
-Is the model looking at meaningful product regions when making its decision?
+- leather
+- hazelnut
 
-For strong categories such as leather and hazelnut, the Grad-CAM overlays generally provide useful evidence that the model focuses on relevant product regions. This supports the quantitative results because the model is not only achieving high AUROC but also appears to attend to meaningful visual areas.
+More variable categories:
 
-The failure-case galleries are useful for understanding where the model struggles. These examples are especially important for capsule, carpet, and pill, where subtle defects or texture variations may cause false positives or false negatives.
+- capsule
+- carpet
+- bottle
 
-The qualitative outputs are generated by:
+Leather is the most stable category, with AUROC standard deviation of only 0.0026.
 
-- `src/evaluation/qualitative.py`
-- `notebooks/04_Evaluation.ipynb`
+Carpet has the highest AUROC standard deviation:
 
-The generated artifacts include:
+Carpet AUROC Std = 0.0368
 
-- `gradcam_gallery.png`
-- `failure_cases.png`
+Capsule has the highest F1 standard deviation:
 
-for each evaluated category.
+Capsule F1 Std = 0.1062
+
+This shows that a single fold can hide important behavior. The 3-fold setup is useful because it shows whether the model is consistently strong or only strong on one split.
 
 ---
 
 ## 9. Negative Results and Limitations
 
-This section is mandatory because strong headline metrics alone do not fully describe model behavior.
+### 9.1 Carpet has the weakest F1 and AUPR
 
-### 9.1 Capsule is the weakest category
+Carpet has:
 
-The weakest final result is capsule:
+- Mean F1 = 0.7168
+- Mean AUPR = 0.7585
 
-- AUROC = 0.8834
-- F1 = 0.7407
-
-This suggests that the model struggles more with capsule defects than with the other evaluated categories. Capsule images may contain small or subtle defects, and normal visual variations may look similar to real anomalies.
-
-This is important because the system may not be equally reliable across all industrial object types.
+This makes carpet one of the weakest categories in the updated evaluation. The model can still rank some defective images well, but the final threshold-based classification is harder.
 
 ---
 
-### 9.2 Wide confidence intervals on smaller test sets
+### 9.2 Pill has the weakest AUROC and accuracy
 
-Several categories have wide confidence intervals, especially for F1 and AUPR. This is expected because the test-set sizes are relatively small.
+Pill has:
 
-For example, bottle has:
+- Mean AUROC = 0.9112
+- Mean Accuracy = 0.8283
 
-F1 = 0.8571 [0.6667, 1.0000]
-
-The wide interval means that the exact value of F1 is uncertain. The model may still be strong, but the limited number of test examples makes the final estimate less precise.
-
-This is why confidence intervals are necessary in the report.
+This indicates that pill is challenging both in ranking and in final classification. Small or subtle defects may not be captured well enough by image-level supervision alone.
 
 ---
 
-### 9.3 Threshold-dependent metrics are less stable than AUROC
+### 9.3 Fixed thresholds reduce inflated F1 and accuracy
 
-AUROC measures ranking quality across all possible thresholds. F1 and accuracy depend on a selected threshold.
+The updated evaluation uses Engineer 3 validation thresholds. This is more realistic than choosing a new threshold directly from test predictions.
 
-Some categories, such as carpet and pill, have good AUROC but weaker F1. This means the model may rank defective examples reasonably well, but selecting a single operational threshold is still difficult.
-
-For deployment, the threshold should be selected carefully based on the real industrial cost of false positives and false negatives.
+Because the threshold is fixed, F1 and accuracy may be lower than the previous report. This is expected and is not a problem. It means the protocol is more honest and closer to deployment.
 
 ---
 
-### 9.4 The project does not yet include full label-fraction ablation
+### 9.4 Label-ratio ablation was removed from scope
 
-The original project plan included experiments with different label fractions, such as:
+The original plan included:
 
 - 10% labels
 - 50% labels
 - 100% labels
 
-However, the completed evaluation scope focuses on 100% labels only.
-
-This should be considered a scope reduction. The current results show supervised full-label performance but do not prove how well the model performs in low-label regimes.
+The final scope only evaluates 100% labels with 3-fold cross-validation. Therefore, the current report does not show how the model performs in low-label settings.
 
 ---
 
-### 9.5 The current evaluation is image-level, not true pixel-level segmentation
+### 9.5 The evaluation is image-level, not segmentation-level
 
-Although Grad-CAM visualizations provide qualitative localization evidence, this is not the same as a fully supervised segmentation evaluation.
+The model predicts whether the whole image is defective or normal. It does not produce a true pixel-level defect mask.
 
-The current system evaluates whether an image is defective, not whether every defective pixel is correctly segmented.
-
-A future version should include pixel-level mask evaluation using ground-truth defect masks where available.
+Grad-CAM can help visualize where the model is looking, but it is not the same as a segmentation model.
 
 ---
 
-### 9.6 The dataset split differs from the standard one-class MVTec protocol
+### 9.6 Same test split is reused across fold checkpoints
 
-The current project behaves as a supervised binary classification benchmark. This differs from the standard MVTec anomaly detection protocol, where models are usually trained only on normal images and tested on normal plus defective images.
+The updated notebook evaluates all three fold checkpoints for each category on the same category-level held-out test split.
 
-This limitation should be clearly stated so that the results are interpreted as supervised classification results rather than pure one-class anomaly detection results.
+This is useful because it makes fold checkpoints directly comparable. However, it also means the three folds are not evaluated on three independent test sets.
 
 ---
 
@@ -448,23 +486,17 @@ This limitation should be clearly stated so that the results are interpreted as 
 
 The training phase involved:
 
-6 categories × 3 folds = 18 training runs
+18 training runs = 6 categories × 3 folds
 
 Assuming each Kaggle T4 run took approximately 30 minutes, the total training cost is approximately:
 
 18 × 0.5 GPU-hours = 9 GPU-hours
 
-The final evaluation phase was much cheaper. The quantitative evaluation took approximately 4 GPU-minutes, and the qualitative Grad-CAM galleries took less than 1 additional minute.
+The updated evaluation completed all 18 checkpoint evaluations in approximately 13 minutes.
 
-This means the evaluation cost was small compared with the training cost.
+This means the evaluation cost is small compared with the training cost.
 
-The use of three-fold cross-validation increased training compute by roughly 3× compared with a single split. However, this cost is justified because it reveals performance variability across folds. Without cross-validation, the team might incorrectly trust a single favorable split.
-
-For example, the weaker capsule test performance shows that some categories are more sensitive to split difficulty. The extra compute cost therefore provided useful evidence about robustness.
-
-Overall, the cost-benefit tradeoff is acceptable:
-
-Higher compute cost → better confidence in model stability and category-level reliability
+The 3-fold setup costs more than a single split, but it gives better evidence about model stability. The fold-level results show that some categories, especially capsule and carpet, vary across folds. Therefore, the additional compute cost is justified.
 
 ---
 
@@ -488,8 +520,6 @@ The final local coverage result for the main evaluation files was:
 
 This satisfies the required coverage threshold of more than 85%.
 
-The coverage tests use lightweight mocked or synthetic inputs to exercise the evaluator and qualitative modules without requiring the full MVTec dataset or large trained checkpoints during unit testing.
-
 ---
 
 ## 12. Final Deliverables
@@ -512,11 +542,11 @@ Engineer 5 deliverables completed:
 
 ## 13. Conclusion
 
-The evaluation confirms that the supervised ResNet-50 defect classifier performs strongly on several MVTec AD categories, especially leather, hazelnut, and bottle. The overall mean AUROC is 0.9554, showing strong image-level ranking performance across the six selected categories.
+The updated all-fold evaluation confirms that the supervised ResNet-50 defect classifier performs strongly overall, with an overall mean AUROC of 0.9491 across the six categories.
 
-However, the results also show that performance is category-dependent. Capsule is the weakest category, and threshold-dependent metrics such as F1 are less stable than AUROC. Confidence intervals are necessary because some category test sets are small.
+Leather is the strongest and most stable category. Hazelnut and bottle also perform well. Carpet and pill are the most challenging categories, with carpet having the weakest F1 and AUPR, and pill having the weakest AUROC and accuracy.
 
-The final evaluation infrastructure is complete, tested, and suitable for reporting. It provides quantitative metrics, uncertainty estimates, diagnostic plots, Grad-CAM visualizations, and failure-case analysis.
+This final evaluation is stronger than the previous version because it reports all 18 fold checkpoints and uses fixed validation thresholds from Engineer 3 instead of optimizing thresholds on the test set.
 
 ---
 
