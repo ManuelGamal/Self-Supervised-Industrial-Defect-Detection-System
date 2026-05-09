@@ -1,0 +1,22 @@
+api:
+  host: 0.0.0.0
+  port: 8000
+  workers: 4
+  max_batch_size: 32
+  timeout_seconds: 30
+
+model:
+  onnx_path: checkpoints/model_quantized.onnx
+  device: cpu          # Options: cpu, cuda
+  quantized: true
+
+monitoring:
+  enable_prometheus: true
+  prometheus_port: 9090
+  log_predictions: true
+  drift_detection: true
+  drift_window_size: 1000
+
+logging:
+  level: INFO
+  log_file: logs/api.log

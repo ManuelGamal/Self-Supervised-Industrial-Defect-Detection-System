@@ -1,0 +1,76 @@
+defaults:
+  - _self_
+
+experiment:
+  name: supervised-defect
+  seed: 42
+  output_root: results/training
+
+data:
+  root: data/raw/mvtec-ad
+  splits_dir: data/splits
+  category: bottle
+  ratio: 100
+  split_csv: null
+  fold_id: null
+  image_size: 224
+
+model:
+  pretrained: true
+  dropout: 0.3
+  focal_gamma: 2.0
+  focal_alpha: 0.25
+  freeze_encoder: false
+
+training:
+  epochs: 50
+  batch_size: 32
+  num_workers: 4
+  learning_rate: 1e-4
+  weight_decay: 1e-4
+  warmup_epochs: 2
+  accelerator: auto
+  devices: 1
+  precision: 16-mixed
+  deterministic: true
+  benchmark: false
+  gradient_clip_val: 0.0
+  log_every_n_steps: 10
+
+checkpoint:
+  dir: checkpoints/supervised
+  monitor: val/auroc
+  mode: max
+  save_top_k: 3
+  save_last: true
+
+early_stopping:
+  enabled: true
+  monitor: val/auroc
+  mode: max
+  patience: 8
+  min_delta: 0.0
+
+resume:
+  auto: true
+  checkpoint_path: null
+
+evaluation:
+  run_test_after_fit: true
+
+wandb:
+  enabled: true
+  entity: manuelaziz27-ain-shams-university
+  project: defect-detection-supervised
+  group: supervised-ablation
+  tags:
+    - supervised
+    - mvtec
+  notes: ""
+  log_model: true
+
+hydra:
+  run:
+    dir: .
+  job:
+    chdir: false

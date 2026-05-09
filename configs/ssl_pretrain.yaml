@@ -1,0 +1,38 @@
+defaults:
+  - _self_
+
+ssl:
+  method: simclr       # Options: simclr, byol, dino
+  backbone: resnet50   # Options: resnet18, resnet50, vit_small, vit_base
+  projection_dim: 128
+  temperature: 0.07    # SimCLR temperature
+  momentum: 0.996      # BYOL/DINO EMA momentum
+
+training:
+  epochs: 200
+  batch_size: 256
+  learning_rate: 3e-4
+  weight_decay: 1e-4
+  warmup_epochs: 10
+  optimizer: adamw     # Options: adam, adamw, sgd
+
+data:
+  data_dir: data/processed/normal/
+  image_size: 224
+  num_workers: 8
+  augmentations:
+    color_jitter: true
+    color_jitter_strength: 0.5
+    grayscale_prob: 0.2
+    gaussian_blur: true
+    horizontal_flip: true
+    rotation_degrees: 30
+
+logging:
+  use_wandb: true
+  project_name: defect-detection-ssl
+  log_interval: 10
+
+checkpoint:
+  save_dir: checkpoints/ssl/
+  save_every_n_epochs: 20

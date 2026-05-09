@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+venv/
+env/
+.venv/
+
+# Data
+data/raw/
+data/processed/
+*.zip
+*.tar.gz
+
+# Models & Checkpoints
+checkpoints/
+*.pth
+*.onnx
+*.pt
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Experiment tracking
+wandb/
+runs/
+mlruns/
+lightning_logs/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log
+
+# Additional ignore patterns
+*:Zone.Identifier
+tmp_*
+*.ckpt
+*.onnx
+*.png
+*.exe
+.coverage

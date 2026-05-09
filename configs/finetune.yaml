@@ -1,0 +1,32 @@
+defaults:
+  - _self_
+
+model:
+  mode: anomaly        # Options: anomaly, classification, segmentation
+  encoder_checkpoint: checkpoints/ssl/best_encoder.pth
+  freeze_encoder: false
+  num_classes: 2       # For classification mode
+
+training:
+  epochs: 50
+  batch_size: 32
+  learning_rate: 1e-4
+  weight_decay: 1e-4
+  labeled_fraction: 1.0  # Fraction of labeled data to use
+
+data:
+  data_dir: data/splits/
+  image_size: 224
+  num_workers: 4
+
+evaluation:
+  metrics:
+    - auroc
+    - f1
+    - map
+    - pixel_iou   # Only for segmentation mode
+  threshold: 0.5
+
+checkpoint:
+  save_dir: checkpoints/finetune/
+  monitor_metric: auroc
